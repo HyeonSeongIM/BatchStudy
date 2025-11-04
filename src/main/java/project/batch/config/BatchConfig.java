@@ -1,6 +1,9 @@
 package project.batch.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.data.RepositoryItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
@@ -10,6 +13,7 @@ import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.transaction.PlatformTransactionManager;
 import project.batch.entity.Student;
 import project.batch.repository.StudentRepository;
 
@@ -18,6 +22,8 @@ import project.batch.repository.StudentRepository;
 public class BatchConfig {
 
     private final StudentRepository studentRepository;
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager platformTransactionManager;
 
     @Bean
     public FlatFileItemReader<Student> itemReader() {
@@ -43,8 +49,19 @@ public class BatchConfig {
         return writer;
     }
 
+    @Bean
+    public Step importStep() {
+        return new StepBuilder("csvImporter", jobRepository)
+                .<Student, Student>chunk(10, platformTransactionManager)
+                .reader(itemReader())
+                .processor(processor())
+                .writer(writer())
+                .build();
+    }
+
     private LineMapper<Student> lineMapper() {
         DefaultLineMapper<Student> lineMapper = new DefaultLineMapper<>();
+
         DelimitedLineTokenizer lineTokenizer = new DelimitedLineTokenizer();
         lineTokenizer.setDelimiter(",");
         lineTokenizer.setStrict(false);
@@ -52,8 +69,10 @@ public class BatchConfig {
 
         BeanWrapperFieldSetMapper<Student> fieldSetMapper = new BeanWrapperFieldSetMapper<>();
         fieldSetMapper.setTargetType(Student.class);
+
         lineMapper.setFieldSetMapper(fieldSetMapper);
         lineMapper.setLineTokenizer(lineTokenizer);
+
         return lineMapper;
 
 
