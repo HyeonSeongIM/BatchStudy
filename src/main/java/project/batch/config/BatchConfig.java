@@ -1,7 +1,9 @@
 package project.batch.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.data.RepositoryItemWriter;
@@ -56,6 +58,13 @@ public class BatchConfig {
                 .reader(itemReader())
                 .processor(processor())
                 .writer(writer())
+                .build();
+    }
+
+    @Bean
+    public Job runJob() {
+        return new JobBuilder("importStudents", jobRepository)
+                .start(importStep())
                 .build();
     }
 
